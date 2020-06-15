@@ -1,0 +1,31 @@
+// This sample of logged data
+
+Date = 2020-06-16 00:56:13
+SEND AUTH CODE
+Array
+(
+    [ruid] => id121931
+    [tel] => 70001234567
+    [remote-ip] => 10.10.1.199
+    [authcode] => 9C5HU
+)
+
+
+Date = 2020-06-16 00:56:21
+AUTHERIZATION
+Array
+(
+    [ruid] => id121931
+    [auth] => 9C5HU
+)
+
+
+Date = 2020-06-16 00:57:14
+CONNECTION CLOSED
+Array
+(
+    [ruid] => id121931
+    [tel] => 70001234567
+    [action] => down
+    [remote-ip] => 10.10.1.199
+)
