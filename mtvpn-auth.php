@@ -55,7 +55,7 @@ $SMS_gateway = array(
 // -------------------------
 if (!$_REQUEST) die(header('HTTP/1.0 406 Not Acceptable')); // если запроса нет – сброс | if request free - reset
 if (!$_REQUEST['ruid']) die(header('HTTP/1.0 406 Not Acceptable')); // если не указан ruid - сбросс | if ruid not isset – reset
-if (!array_key_exists($_REQUEST['ruid'], $ruid_data)) die('Request error'); // если роутер не существует – сброс | if router does not exist – reset
+if (!array_key_exists($_REQUEST['ruid'], $ruid_data)) die(header('HTTP/1.0 406 Not Acceptable')); // если роутер не существует – сброс | if router does not exist – reset
 if ($_REQUEST['auth']) autorize(); // если запрос на авторизацию, то пускаем без пароля и проверяем авторизацию | if auth request allow without password
 if (!ruid_auth()) die(header('HTTP/1.0 401 Unauthorized')); // проверяем пароль роутера для отправки SMS | check ruid password
 if (@$_REQUEST['action'] == 'down') { // Если vpn-соединение закрыто | if vpn-connection closed
