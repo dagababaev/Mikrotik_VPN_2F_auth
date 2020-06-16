@@ -82,11 +82,16 @@ function send_authcode() {
   $sms_gw = $ruid_data[$_REQUEST['ruid']]['smsgw'][array_rand($ruid_data[$_REQUEST['ruid']]['smsgw'], 1)]; // данные sms-шлюза
   // генерируем код авторизации и добавляем его в массив | Generate auth-code and add to REQUEST array
   $_REQUEST['authcode'] = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ123456789'), 0, 5);
-  // подключаем класс | connect class
-  $API = new RouterosAPI();
   // Формируем сообщение отправляемое пользователю – только eng или транслит
   // Create message that will be sent to user
-  $message = 'To autorize user '.$_REQUEST['tel'].' connection open – '.$host.'?ruid='.$_REQUEST['ruid'].'&auth='.$auth_code;
+  $message = rawurlencode('To authorize user '.$_REQUEST['tel'].' connection open '.$host.'?ruid='.$_REQUEST['ruid'].'&auth='.$_REQUEST['authcode']);
+
+  // ЕСЛИ ИСПОЛЬЗУЕМ ПЛАТНЫЙ SMS ШЛЮЗ
+  // IF USE PAID SMS CENTER GATEWAY
+  if ($sms_gw == "PAY") UsePAYsmsc($message);
+    
+  // подключаем класс | connect class
+  $API = new RouterosAPI();
   // если подключились отправляем SMS | if connected successfully - sending message
   if ($API->connect($SMS_gateway[$sms_gw]['ip'], $SMS_gateway[$sms_gw]['login'], $SMS_gateway[$sms_gw]['password'])) {
       // Команда отправки SMS | SMS send command
@@ -165,6 +170,21 @@ function autorize() {
       </html>
     ');
 }
+
+// ОТПРАВКА SMS ЧЕРЕЗ ПЛАТНЫЙ СЕРВИС ОТПРАВКИ СООБЩЕНИЙ (ЗНАЧЕНИЕ smsgw В $ruid_data ДОЛЖНО БЫТЬ УСТАНОВЛЕНО 0 => "PAY")
+// SEND SMS VIA PAID SMS CENTER GATEWAY (smsgw VALUE IN $ruid_data SHOULD BE INSTALLED 0 => "PAY")
+function UsePAYsmsc($message) {
+    // для примера использован smsc.ru | for example i use smsc.ru
+    $smsc_login = '#SMSCLOGIN#';
+    $smsc_pass = '#SMSCPASSWORD#';
+    $smsc_sendername = '#SMSCSENDERNAME#'; //  если используется | if need
+    // Отправляем SMS | SEND SMS
+    $sms_send = file_get_contents('https://smsc.ru/sys/send.php?login='.$smsc_login.'&psw='.$smsc_pass.'&phones='.$_REQUEST['tel'].'&mes='.$message.'&sender='.$smsc_sendername.'&flash=0');
+    if (strpos($sms_send, 'OK') !== false) {
+      die($_REQUEST['authcode']);
+    }
+      die($_REQUEST['Send SMS error']);
+};
 
 // ------------------------
 // ФУНКЦИЯ СОХРАНЕНИЯ ЛОГОВ
