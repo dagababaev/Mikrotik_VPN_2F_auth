@@ -1,6 +1,6 @@
 // This sample of logged data
 
-Date = 2020-06-16 00:56:13
+Time = 2020-06-16 00:56:13
 SEND AUTH CODE
 Array
 (
@@ -11,7 +11,7 @@ Array
 )
 
 
-Date = 2020-06-16 00:56:21
+Time = 2020-06-16 00:56:21
 AUTHERIZATION
 Array
 (
@@ -20,7 +20,7 @@ Array
 )
 
 
-Date = 2020-06-16 00:57:14
+Time = 2020-06-16 00:57:14
 CONNECTION CLOSED
 Array
 (
@@ -29,3 +29,8 @@ Array
     [action] => down
     [remote-ip] => 10.10.1.199
 )
+
+
+Time = 2020-06-16 23:16:17
+FIREWALL BLOCKED ACCESS
+172.16.1.10
