@@ -10,9 +10,10 @@
 - Возможность привязки отдельного роутера к «конкретному» модему
 - Использование всего одного php скрипта на удаленном сервере
 - Не важно какое устройство инициировало VPN-соединение, авторизация по ссылке из SMS
-- Ведение log'а всех запросов на сервере
+- Ведение log'а всех запросов на сервере (можно вкл/выкл)
 - Увеличение отказоустойчивости и снижения нагрузки системы путем отправки SMS рандомно с нескольких модемов
 - Возможность отправки SMS через платные шлюзу (на примере https://smsc.ru)
+- Firewall – доступ на генерацию кодов и отправку SMS только у роутеров занесенных в список (можно вкл/выкл)
 
 ------------
 
@@ -25,6 +26,7 @@ Two-factor authentication script for VPN users via SMS for MikroTik
 - Ability to bind a separate router to a "specific" modem
 - Using just one php script on a remote server
 - It doesn’t matter which device initiated the VPN connection, authorization by the link from SMS
-- Authorization log on the server
+- Authorization log on the server (may be on/off)
 - Increase fault tolerance and reduce system load by sending SMS randomly from multiple modems
 - Send SMS via paid sms center getaway (for example https://smsc.ru)
+- Firewall - allow access to generate codes and send SMS only for router from array (may be on/off)
