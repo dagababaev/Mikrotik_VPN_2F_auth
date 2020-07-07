@@ -12,149 +12,183 @@
 //  License: MIT
 // ------------------------------------------------------------------------------
 
+define('TELEGRAM_BOT_TOKEN', '1100052127:YER5vFiH0krj-BWN16optAycNH7hn8gne0s');
+define('SYNOLOGY_WEBHOOK_URL', 'https://yourwebsite.com:5001/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token=');
+define('LOG_FILEPATH', 'mt2Fvpn.log'); // Log file path
+define('HOST', 'https://yourwebsite.com/'); // Full address that this script awalible
+
 
 require_once('routeros_api.class.php');
 // https://github.com/BenMenking/routeros-api
 
 // -------------------------
-// Базовые настройки скрипта
 // Base settings
 // -------------------------
-// Firewall - разрешает доступ к отправке SMS только роутерам из массива $ruid_data | Firewall - allow access to send SMS only for router from array $ruid_data
-$firewall = true; // Используем firewall? | Use firewall? true | false
-$uselog = true; // Используем лог? | Use log? true | false
-$log_path = 'mt2Fvpn.log'; // Путь к файлу лога | Log file path
-$host = 'https://yourwebsite.com/'; // Адрес по которому доступен данный скрипт | Full address that this script awalible
+$firewall = true; // Firewall - allow access to send SMS only for router from array $ruid_data. Use? true | false
+$uselog = true; // Use log? true | false
 
-// Массив данных всех роутеров/vpn-шлюзов | Routers data array used as vpn-servers
+// Routers data array used as vpn-servers
 $ruid_data = array(
-    // пароль в md5, глобальный ip-адрес, логин входа на роутер, пароль, SMS-шлюз через который происходит отправка SMS
     // password in md5, global ip-address, mikrotik login, password, SMS-gateway-key will be use to send sms
     '#ROUTERLOGIN#' => array('mdpass' => '#ROUTER_MD5_PASSWORD#',
                           'ip' => 'XXX.XXX.X.X',
                           'login' => '#ROSAPI_LOGIN#',
                           'password' => '#PASSWORD#',
                           'smsgw' => array(
-                                           // Если необходимо отправлять SMS рандомно с нескольких шлюзов (снижение нагрузки на модем)
                                            // If you want send SMS randomly from any SMS-gateways, add one here (low modem load)
                                            0 => 'SMS_gw1')
                           )
     );
 
-// Массив данных роутеров используемых в качестве sms-шлюзов | Routers data array will be used to send autherization sms
+// Routers data array will be used to send autherization sms
 $SMS_gateway = array(
-    // ip-адрес шлюза (глобальный или локальный если в одной сети с сервером), логин, пароль, порт USB-модема, канал USB-модема
     // ip-address (global or local if used in one local network with server), login, password, USB-modem port, USB-modem channel
     'SMS_gw1' => array('ip' => 'XXX.XXX.X.X', 'login' => '#ROSAPI_LOGIN#', 'password' => '#PASSWORD#', 'port' => '#USB_PORT#', 'channel' => '#USB_CHANNEL#')
     );
 
 
-// -------------------------
-// Входные проверки запросов
+// ----------------
 // Input data check
-// -------------------------
-if (!$_REQUEST) die(header('HTTP/1.0 406 Not Acceptable')); // если запроса нет – сброс | if request free - reset
-if (!$_REQUEST['ruid']) die(header('HTTP/1.0 406 Not Acceptable')); // если не указан ruid - сбросс | if ruid not isset – reset
-if (!array_key_exists($_REQUEST['ruid'], $ruid_data)) die(header('HTTP/1.0 406 Not Acceptable')); // если роутер не существует – сброс | if router does not exist – reset
-if ($_REQUEST['auth']) autorize(); // если запрос на авторизацию, то пускаем без пароля и проверяем авторизацию | if auth request allow without password
-if (!ruid_auth()) die(header('HTTP/1.0 401 Unauthorized')); // проверяем пароль роутера для отправки SMS | check ruid password
-if (@$_REQUEST['action'] == 'down') { // Если vpn-соединение закрыто | if vpn-connection closed
+// ----------------
+if (!$_REQUEST) die(header('HTTP/1.0 406 Not Acceptable')); // if request free - reset
+if (!$_REQUEST['ruid']) die(header('HTTP/1.0 406 Not Acceptable')); // if ruid not isset – reset
+if (!array_key_exists($_REQUEST['ruid'], $ruid_data)) die(header('HTTP/1.0 406 Not Acceptable')); // if router does not exist – reset
+if ($_REQUEST['auth']) autorize(); // if auth request allow without password
+if (!ruid_auth()) die(header('HTTP/1.0 401 Unauthorized')); // check ruid password
+if (@$_REQUEST['action'] == 'down') { // if vpn-connection closed
   writelog('CONNECTION CLOSED');
   die(header('HTTP/1.0 200 ОК'));
 }
-if ($_REQUEST['tel']) send_authcode(); // если задан номер телефона, отправляем SMS | if phone number isset – sending SMS
+if (isset($_REQUEST['phone']) || isset($_REQUEST['synology']) || isset($_REQUEST['telegram'])) send_authcode(); // if phone number isset – sending SMS
 
-// ---------------------------------------------------------------------
-// Проверка на наличие роутера в списке разрешенных и пароля авторизации
-// Check for router (ruid) is in allowed list
-// ---------------------------------------------------------------------
+// -----------------------------------
+// Check for router (ruid) is in array
+// -----------------------------------
 function ruid_auth() {
   global $ruid_data;
-  if (!$_REQUEST['pass']) return false; // если пароль не задан – сброс | if password not set - reset
-  // проверяем md5-хэш пароля | check password md5-hash
+  if (!$_REQUEST['pass']) return false; // if password not set - reset
+  // check password md5-hash
   if (md5($_REQUEST['pass']) == $ruid_data[$_REQUEST['ruid']]['mdpass']) return true;
   return false;
 }
 
-// ---------------------------------------------------------
-// Функция отправки ссылки с кодом авторизации через ros api
+// -------------------------------------------
 // Send autherization sms via ros api function
-// ---------------------------------------------------------
+// -------------------------------------------
 function send_authcode() {
-  global $ruid_data;
-  global $host;
   global $firewall;
-
-  // Если firewall == true, то разрешаем доступ к отправке только роутрам внесенным в массив $ruid_data
   // If firewall == true, allow access only to routers has record in array $ruid_data
   if ($firewall) firewall();
-  // Выбираем шлюз рандомно | Get random SMS-gateway
-  $sms_gw = $ruid_data[$_REQUEST['ruid']]['smsgw'][array_rand($ruid_data[$_REQUEST['ruid']]['smsgw'], 1)]; // данные sms-шлюза
-  // генерируем код авторизации и добавляем его в массив | Generate auth-code and add to REQUEST array
+
+  // Generate auth-code and add to REQUEST array
   $_REQUEST['authcode'] = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ123456789'), 0, 5);
-  // Формируем сообщение отправляемое пользователю – только eng или транслит
   // Create message that will be sent to user
-  $message = rawurlencode('To authorize user '.$_REQUEST['tel'].' connection open '.$host.'?ruid='.$_REQUEST['ruid'].'&auth='.$_REQUEST['authcode']);
+  $message = 'To authorize user '.$_REQUEST['username'].' connection open '.HOST.'?ruid='.$_REQUEST['ruid'].'&auth='.$_REQUEST['authcode'];
 
-  // Если используем платный sms шлюз | If use paid sms center gateway
-  if ($sms_gw == "PAY") UsePAYsmsc($message);
+  if ($_REQUEST['telegram']) send_telegram($message); // via telegram
+  if ($_REQUEST['syno_token']) send_synoChat($message); // via synology chat
+  if ($_REQUEST['phone']) send_SMS($message); // via SMS to phone
 
-  // подключаем класс | connect class
-  $API = new RouterosAPI();
-  // если подключились отправляем SMS | if connected successfully - sending message
+  // логируем запросы | save log
+  writelog('SEND AUTH CODE');
+  die($_REQUEST['authcode']);
+}
+
+// -------------
+// Over Telegram
+// -------------
+
+function send_telegram($message) {
+  $url = 'https://api.telegram.org/bot'.TELEGRAM_BOT_TOKEN.'/sendMessage';
+  // creating message
+  $options = array('http' =>
+      array(
+          'method'  => 'POST',
+          'header'  => 'Content-Type: application/json',
+          'content' => '{"chat_id":"'.$_REQUEST['telegram'].'", "text": "'.$message.'"}'
+      )
+  );
+  $content  = stream_context_create($options);
+  $result = file_get_contents($url, false, $content);
+}
+
+// ------------------
+// Over Synology chat
+// ------------------
+// info - https://www.synology.com/knowledgebase/DSM/tutorial/Collaboration/How_to_configure_webhooks_and_slash_commands_in_Chat_Integration
+function send_synoChat($message) {
+  $url = SYNOLOGY_WEBHOOK_URL.$_REQUEST['syno_token'];
+  // creating message
+  $options = array('http' =>
+      array(
+          'method'  => 'POST',
+          'header'  => 'Content-Type: application/x-www-form-urlencoded',
+          'content' => 'payload='.urlencode('{"text": "'.$message.'"}')
+      )
+  );
+  $content  = stream_context_create($options);
+  $result = file_get_contents($url, false, $content);
+}
+
+
+// -----------------
+// SMS via usb-modem
+// -----------------
+
+function send_SMS($message) {
+  global $ruid_data;
+  global $SMS_gateway;
+  // Get random SMS-gateway
+  $sms_gw = $ruid_data[$_REQUEST['ruid']]['smsgw'][array_rand($ruid_data[$_REQUEST['ruid']]['smsgw'], 1)]; // gateway data
+
+  if ($sms_gw == "PAY") UsePAYsmsc($message); // If use paid sms center gateway
+  $API = new RouterosAPI(); // connect class
+  // if connected successfully - sending message
   if ($API->connect($SMS_gateway[$sms_gw]['ip'], $SMS_gateway[$sms_gw]['login'], $SMS_gateway[$sms_gw]['password'])) {
-      // Команда отправки SMS | SMS send command
+      // SMS send command
       $ARRAY = $API->comm("/tool/sms/send", array(
       "port"=>$SMS_gateway[$sms_gw]['port'],
       "channel"=>$SMS_gateway[$sms_gw]['channel'],
-      "phone-number"=>$_REQUEST['tel'],
-      "message"=>"To autorize user ".$_REQUEST['tel']." connection open – ".$host."?ruid=".$_REQUEST['ruid']."&auth=".$_REQUEST['authcode'],));
-      // если отправка не удалась и получили ошибку модема, то выполняем сброс питания usb для перезагрузки модема
+      "phone-number"=>$_REQUEST['phone'],
+      "message"=>$message,));
       // Checking if send failed and error message return, will make usb power-reset to restart modem
       if($ARRAY['!trap']) {
         $API->comm("/system/routerboard/usb/power-reset");
-        // логируем запросы | save log
-        // добавляем в массив сообщение об ошибке | Add error to array and save all array to log
+        // Save log | Add error to array and save all array to log
         $_REQUEST['ERROR'] = $ARRAY['!trap'][0]['message'];
         writelog('MODEM ERROR');
         die('Stop with error: '.$ARRAY['!trap'][0]['message'].' Making power reset of usb-port');}
   }
 
   $API->disconnect();
-  // логируем запросы | save log
-  writelog('SEND AUTH CODE');
-  die($_REQUEST['authcode']);
 }
 
-
 // --------------------------------------------------------------------
-// Функция авторизации через ros api – удаление из address-list
 // Autherization using ros api function – delete list from address-list
 // --------------------------------------------------------------------
 function autorize() {
   global $ruid_data;
-  // подключаем класс | connect class
+  // connect class
   $API = new RouterosAPI();
   if ($API->connect($ruid_data[$_REQUEST['ruid']]['ip'], $ruid_data[$_REQUEST['ruid']]['login'], $ruid_data[$_REQUEST['ruid']]['password'])) {
-    // если подключились отправляем команду | if connected successfully - sending command
+    // if connected successfully - sending command
     $API->write('/ip/firewall/address-list/print', false);
     $API->write('?comment='.$_REQUEST['auth'], false);
     $API->write('=.proplist=.id');
-    // получаем ответ | get response
+    // get response
     $ARRAYS = $API->read();
-    // Если запись не существует в адрес-листе - сброс
     // If no record in firewall address_list – reset
     if (!$ARRAYS[0]) die(header('HTTP/1.0 406 Not Acceptable'));
-    // удаляем запись | delete firewall address-list
+    // delete firewall address-list
     $API->write('/ip/firewall/address-list/remove', false);
     $API->write('=.id=' . $ARRAYS[0]['.id']);
     $READ = $API->read();
   }
   $API->disconnect();
-  // логируем запросы | save log
+  // save log
   writelog('AUTHERIZATION');
 
-  // Информируем пользователя об успешной авторизации | Show success page to user
+  // Show success page to user
   die('
       <!DOCTYPE html>
       <html lang="ru">
@@ -179,42 +213,40 @@ function autorize() {
     ');
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-// Отправка sms через платный сервис отправки сообщений (значение smsgw в $ruid_data должно быть установлено 0 => «pay»)
+// -----------------------------------------------------------------------------------------------
 // Send sms via paid sms center gateway (smsgw value in $ruid_data should be installed 0 => «pay»)
-// ---------------------------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
 function UsePAYsmsc($message) {
-    // для примера использован smsc.ru | for example i use smsc.ru
+    // for example i use smsc.ru
     $smsc_login = '#SMSCLOGIN#';
     $smsc_pass = '#SMSCPASSWORD#';
-    $smsc_sendername = '#SMSCSENDERNAME#'; //  если используется | if need
-    // Отправляем SMS | SEND SMS
-    $sms_send = file_get_contents('https://smsc.ru/sys/send.php?login='.$smsc_login.'&psw='.$smsc_pass.'&phones='.$_REQUEST['tel'].'&mes='.$message.'&sender='.$smsc_sendername.'&flash=0');
+    $smsc_sendername = '#SMSCSENDERNAME#'; // if need
+    // SEND SMS
+    $sms_send = file_get_contents('https://smsc.ru/sys/send.php?login='.$smsc_login.'&psw='.$smsc_pass.'&phones='.$_REQUEST['phone'].'&mes='.$message.'&sender='.$smsc_sendername.'&flash=0');
     if (strpos($sms_send, 'OK') !== false) {
       die($_REQUEST['authcode']);
     }
       die($_REQUEST['Send SMS error']);
 };
 
-// --------------------------------------------------------------------------------
-// Firewall - разрешает доступ к отправке SMS только роутерам из массива $ruid_data
+// -------------------------------------------------------------------------
 // Firewall - allow access to send SMS only for router from array $ruid_data
-// --------------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 function firewall() {
   global $uselog;
   global $log_path;
   global $ruid_data;
 
   $result = false;
-  // перебираем массив и ищем ip в $ruid_data | serch ip in array $ruid_data
+  // serch ip in array $ruid_data
   foreach ($ruid_data as $value) {
     $result = (in_array($_SERVER['REMOTE_ADDR'], $value) === true) ? true : false;
-    if($result) break; // если нашли совпадение, прерываем | if found record – break
+    if($result) break; // if found record – break
   }
-  // $uselog == true сохраняем лог | save log
+  // $uselog == true | save log
   if (!$result) {
     if ($uselog) {
-      $fp = fopen($log_path, 'a');
+      $fp = fopen(LOG_FILEPATH, 'a');
       fputs($fp, "\nTime = " . date("Y-m-d H:i:s")."\n");
       fputs($fp, 'FIREWALL BLOCKED ACCESS'."\n");
       fputs($fp, $_SERVER['REMOTE_ADDR']."\n");
@@ -224,19 +256,18 @@ function firewall() {
   }
 }
 
-// ------------------------
-// Функция сохранения логов
+// -----------------
 // Save log function
-// ------------------------
+// -----------------
 function writelog($type) {
   global $uselog;
   global $log_path;
   // $uselog == false – break
   if (!$uselog) return;
-  // удаляем пароль из массива перед сохранением лога | remove ruid password from array before saving log
+  // remove ruid password from array before saving log
   unset($_REQUEST['pass']);
-  // сохраняем лог | save log
-  $fp = fopen($log_path, 'a');
+  // save log
+  $fp = fopen(LOG_FILEPATH, 'a');
   fputs($fp, "\nTime = " . date("Y-m-d H:i:s")."\n");
   fputs($fp, $type."\n");
   fputs($fp, print_r($_REQUEST, true));
