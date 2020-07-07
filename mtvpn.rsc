@@ -1,44 +1,63 @@
+# Need to replace with your values in this code: yourwebsite.com, ROUTERLOGIN, ROUTER_PASSWORD
+# Place #phone number / #synology_chat_token / #telegram_id in user ppp secret comment
+
+
 /ip firewall address-list
-add address=8.8.8.8 list=VPN_allow-list
 add address=yourwebsite.com list=VPN_allow-list
+add address=8.8.8.8 list=VPN_allow-list
+add address=10.200.1.1 list=VPN_allow-list
+add address=telegram.org list=Allow-list
+add address=149.154.172.0/22 list=Allow-list comment=telegram
+add address=149.154.168.0/22 list=Allow-list comment=telegram
+add address=149.154.164.0/22 list=Allow-list comment=telegram
+add address=149.154.160.0/22 list=Allow-list comment=telegram
+add address=91.108.56.0/22 list=Allow-list comment=telegram
+add address=91.108.16.0/22 list=Allow-list comment=telegram
+add address=91.108.12.0/22 list=Allow-list comment=telegram
+add address=91.108.8.0/22 list=Allow-list comment=telegram
+add address=91.108.4.0/22 list=Allow-list comment=telegram
 
 /ip firewall raw
 add action=drop chain=prerouting dst-address-list=!VPN_allow-list src-address-list=VPN-unauth disabled=no
 
 /ip pool
-add name=2F-VPN_pool ranges=10.10.1.10-10.10.1.254
+add name=2F-VPN_pool ranges=10.200.1.10-10.200.1.254
 
 /ppp profile
-add change-tcp-mss=no dns-server=8.8.8.8 idle-timeout=59m local-address=10.10.1.1 name=2F-VPN on-down=":global ruidlogin \"#ROUTERLOGIN#\";\r\
-    \n:global ruidpass \"#ROUTER_PASSWORD#\";\r\
-    \n:local userip $"remote-address";\r\
-    \n# if phone number stored in comment\r\
-    \n:local userphone [/ppp secret get [find name=\$user] comment];\r\
-    \n# if phone number = username\r\
-    \n#:local userphone \$user;\r\
+add change-tcp-mss=no dns-server=10.10.0.1 idle-timeout=29m local-address=10.200.1.1 name=2F-VPN on-down=":global ruidlogin \"ROUTERLOGIN\";\r\
+    \n:global ruidpass \"ROUTER_PASSWORD\";\r\
+    \n:global host \"https://yourwebsite.com/\";\r\
     \n\r\
-    \n/tool fetch http-method=post http-data=\"ruid=\$ruidlogin&pass=\$ruidpass&tel=\$userphone&action=down\" url=\"https://yourwebsite.com/\" mode=https as-value output=user;\r\
+    \n:local userip \$\"remote-address\";\r\
+    \n:local username \$user;\r\
+    \n\r\
+    \n/tool fetch http-method=post http-data=\"ruid=\$ruidlogin&pass=\$ruidpass&username=\$username&remote-ip=\$userip&action=down\" url=\"\$host\" mode=ht\
+    tps as-value output=user;\r\
     \n/ip firewall address-list remove [find address=\$userip];\r\
     \n\r\
-    \n:log info message=\"User disconnected:\";\r\
-    \n:log info message=\$user;\r\
-    \n:log info message=\$userip;" on-up=":global ruidlogin \"#ROUTERLOGIN#\";\r\
-    \n:global ruidpass \"#ROUTER_PASSWORD#\";\r\
-    \n:local userip $"remote-address";\r\
-    \n# if phone number stored in comment\r\
-    \n:local userphone [/ppp secret get [find name=\$user] comment];\r\
-    \n# if phone number = username\r\
-    \n#:local userphone \$user;\r\
+    \n:log warning \"User disconnected:\";\r\
+    \n:log warning \$user;\r\
+    \n:log warning \$userip;\r\
+    \n" on-up=":global ruidlogin \"ROUTERLOGIN\";\r\
+    \n:global ruidpass \"ROUTER_PASSWORD\";\r\
+    \n:global host \"https://yourwebsite.com/\";\r\
     \n\r\
-    \n:local authkey [/tool fetch http-method=post http-data=\"ruid=\$ruidlogin&pass=\$ruidpass&tel=\$userphone&remote-ip=\$userip\" url=\"https://yourwebsite.com/\" mode=https as-value output=user];\r\
+    \n:local userip \$\"remote-address\";\r\
+    \n:local userAddress [/ppp secret get [find name=\$user] comment];\r\
+    \n:local username \$user;\r\
+    \n\r\
+    \n:local authkey [/tool fetch http-method=post http-data=\"ruid=\$ruidlogin&pass=\$ruidpass&\$userAddress&username=\$username&remote-ip=\$userip\" url=\
+    \"\$host\" mode=https as-value output=user];\r\
     \n\r\
     \n/ip firewall address-list remove [find address=\$userip];\r\
-    \n/ip firewall address-list add address=\$userip list=VPN-blocked timeout=1h comment=(\$authkey->\"data\");\r\
+    \n/ip firewall address-list add address=\$userip list=VPN-blocked timeout=30m comment=(\$authkey->\"data\");\r\
     \n\r\
-    \n:log info message=\"User connect:\";\r\
-    \n:log info message=\$userphone;\r\
-    \n:log info message=\$userip;\r\
-    \n:log info message=(\$authkey->\"data\");" remote-address=vpn_pool use-compression=no use-encryption=yes use-mpls=no use-upnp=no
+    \n:log warning \"User connect:\";\r\
+    \n:log warning \$username;\r\
+    \n:log warning \$userip;\r\
+    \n:log warning (\$authkey->\"data\");" remote-address=2F-VPN_pool use-compression=no use-encryption=yes use-mpls=no use-upnp=no
 
 /ppp secret
-add comment=70001234567 name=70001234567 password=testuser profile=2F-VPN
+add comment="phone=<user_phone_number>" name=username1 password=testuser profile=2F-VPN disabled=yes
+add comment="synology=<synology_token>" name=username2 password=testuser profile=2F-VPN disabled=yes
+add comment="telegram=<telegram_username_id>" name=username3 password=testuser profile=2F-VPN disabled=yes
