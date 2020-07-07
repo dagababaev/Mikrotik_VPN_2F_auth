@@ -1,5 +1,5 @@
 # Mikrotik_VPN_2F_auth
-2 factor authentification via SMS (over GSM modem) when users, workers or any equipment initilise VPN connection to MikroTik
+2 factor authentification using SMS (over gsm modem or payed sms gateway) / Synology Chat / Telegram bot when users or any equipment create VPN connection to Mikrotik
 
 Скрипт двухфакторной аутентификации пользователей VPN через SMS для MikroTik
 
@@ -12,8 +12,9 @@
 - Не важно какое устройство инициировало VPN-соединение, авторизация по ссылке из SMS
 - Ведение log'а всех запросов на сервере (можно вкл/выкл)
 - Увеличение отказоустойчивости и снижения нагрузки системы путем отправки SMS рандомно с нескольких модемов
-- Возможность отправки SMS через платные шлюзу (на примере https://smsc.ru)
+- Возможность отправки SMS через платные шлюзы (на примере https://smsc.ru)
 - Firewall – доступ на генерацию кодов и отправку SMS только у роутеров занесенных в список (можно вкл/выкл)
+– Отправка кодов авторизации в Synology Chat и через Telegram Bot
 
 ------------
 
@@ -30,3 +31,4 @@ Two-factor authentication script for VPN users via SMS for MikroTik
 - Increase fault tolerance and reduce system load by sending SMS randomly from multiple modems
 - Send SMS via paid sms center getaway (for example https://smsc.ru)
 - Firewall - allow access to generate codes and send SMS only for router from array (may be on/off)
+– Send auth code via Synology Chat and Telegram Bot
