@@ -1,4 +1,13 @@
 <?php
+// ------------------------------------------------------------------------------
+//  © Copyright (с) 2020
+//  Author: Dmitri Agababaev, d.agababaev@duncat.net
+//
+//  Redistributions and use of source code, with or without modification, are
+//  permitted that retain the above copyright notice
+//
+//  License: MIT
+// ------------------------------------------------------------------------------
 
 define('TELEGRAM_BOT_TOKEN', '1100052127:YER5vFiH0krj-BWN16optAycNH7hn8gne0s');
 define('SYNOLOGY_WEBHOOK_URL', 'https://yourwebsite.com:5001/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token=');
