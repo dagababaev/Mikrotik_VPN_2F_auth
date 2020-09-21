@@ -1,0 +1,45 @@
+// Autentification via SMS
+Time = 2020-06-18 17:36:27
+SEND AUTH CODE
+Array
+(
+    [ruid] => vrG7yYMbZ6
+    [phone] => 79990001234
+    [authcode] => 6FlAt
+)
+
+// Autentification via Synology Chat
+Time = 2020-06-18 17:37:07
+SEND AUTH CODE
+Array
+(
+    [ruid] => vrG7yYMbZ6
+    [synology] => %229IuTgbs32RpLrsEndCB3Lce8Hdr8WW2S1ZzsSU4rRzR34PPOqwxWDAReTii4T9w1%22
+    [authcode] => 3ghYw
+)
+
+// Autentification via Telegram
+Time = 2020-06-18 17:58:02
+SEND AUTH CODE
+Array
+(
+    [ruid] => vrG7yYMbZ6
+    [telegram] => 1087123152
+    [username] => username3
+    [remote-ip] => 10.200.1.252
+    [authcode] => aMzX6
+)
+// User disconnect
+Time = 2020-06-18 18:34:45
+CONNECTION CLOSED
+Array
+(
+    [ruid] => vrG7yYMbZ6
+    [username] => username3
+    [remote-ip] => 10.200.1.252
+    [action] => down
+)
+// Firewall block access
+Time = 2020-06-18 16:58:41
+FIREWALL BLOCKED ACCESS
+172.16.1.10
